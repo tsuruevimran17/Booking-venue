@@ -6,6 +6,14 @@
 - ProPlay-Arenas — микросервисная система для поиска и бронирования спортивных площадок. Включает Gateway и сервисы: user, venue, reservation, payment. Использует Go, Gin, GORM, PostgreSQL, Kafka и Docker.
 
 
+
+Ключевые функции:
+-Забронировать поле
+-Удобность бронирования
+-Регистрация под покупателя и владельца
+-Расписание полей
+-Просмотр доступных слотов на заданную дату
+
 ```
              HTTP      ┌───────────────────┐
 ┌────────┐ ──────────> │  Gateway Service  │
@@ -56,5 +64,11 @@ docker-compose down
 cd user-service
 go run ./cmd/app
 ```
+
+Участники:
+- Цуруев Имран - https://github.com/tsuruevimran17
+- Байсангур Идигов - https://github.com/Idigov
+- Шадид Яскиев - https://github.com/DjMariarty
+- Хамзат Гериев - https://github.com/namexamz
 
 
