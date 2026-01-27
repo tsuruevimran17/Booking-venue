@@ -5,6 +5,39 @@
 Короткое описание
 - ProPlay-Arenas — микросервисная система для поиска и бронирования спортивных площадок. Включает Gateway и сервисы: user, venue, reservation, payment. Использует Go, Gin, GORM, PostgreSQL, Kafka и Docker.
 
+- 
+
+             HTTP      ┌───────────────────┐
+┌────────┐ ──────────> │  Gateway Service  │
+│ Client │             └─────────┬─────────┘
+└────────┘                       │
+           ┌─────────────────────┼─────────────────────┐
+           │                     │                     │
+           v                     v                     v
+    ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+    │    Venue     │◄─────│   Booking    │      │    User      │
+    │   Service    │ HTTP │   Service    │      │   Service    │
+    └──────┬───────┘      └──────┬───────┘      └──────┬───────┘
+           │ (check              │                     │
+           │  schedule)     PostgreSQL            PostgreSQL
+      PostgreSQL                 │
+                                 │ produces
+                          Kafka Topics
+                     ┌─────────────────────┐
+                     │ booking.created     │───────┐
+                     │ booking.cancelled   │       │ consumes
+                     └─────────────────────┘       │
+                                                   v
+                                            ┌──────────────┐
+                                            │   Payment    │
+                                            │   Service    │
+                                            └──────┬───────┘
+                                                   │
+                                              PostgreSQL
+
+
+
+                                              
 Варианты запуска
 - Быстрый запуск всех сервисов (Docker Compose):
 
@@ -31,9 +64,4 @@ cd user-service
 go run ./cmd/app
 ```
 
-Переменные окружения
-- По умолчанию используйте файл `.env` в корне проекта. Минимально требуется:
 
-```
-JWT_SECRET=your-super-secret-jwt-key
-```
