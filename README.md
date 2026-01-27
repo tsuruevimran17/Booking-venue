@@ -65,7 +65,7 @@ cd user-service
 go run ./cmd/app
 ```
 
-Участники:
+## Участники:
 - Цуруев Имран - https://github.com/tsuruevimran17
 - Байсангур Идигов - https://github.com/Idigov
 - Шадид Яскиев - https://github.com/DjMariarty
