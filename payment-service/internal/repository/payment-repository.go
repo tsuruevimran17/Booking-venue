@@ -1,11 +1,10 @@
-﻿package repository
+package repository
 
 import (
 	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"payment-service/internal/models"
@@ -16,13 +15,13 @@ var ErrNotFound = errors.New("не найдено")
 type PaymentRepository interface {
 	CreatePayment(payment *models.Payment) error
 	GetPaymentByID(id uint) (*models.Payment, error)
-	GetPaymentsByUserID(userID uuid.UUID, limit, offset int) ([]models.Payment, int64, error)
-	GetPaymentByBookingID(bookingID uuid.UUID) (*models.Payment, error)
+	GetPaymentsByUserID(userID uint, limit, offset int) ([]models.Payment, int64, error)
+	GetPaymentByBookingID(bookingID uint) (*models.Payment, error)
 	UpdatePayment(payment *models.Payment) error
 }
 
 type PaymentRepositoryImpl struct {
-	db *gorm.DB
+	db     *gorm.DB
 	logger *slog.Logger
 }
 
@@ -55,7 +54,7 @@ func (r *PaymentRepositoryImpl) GetPaymentByID(id uint) (*models.Payment, error)
 	return &payment, nil
 }
 
-func (r *PaymentRepositoryImpl) GetPaymentsByUserID(userID uuid.UUID, limit, offset int) ([]models.Payment, int64, error) {
+func (r *PaymentRepositoryImpl) GetPaymentsByUserID(userID uint, limit, offset int) ([]models.Payment, int64, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -83,7 +82,7 @@ func (r *PaymentRepositoryImpl) GetPaymentsByUserID(userID uuid.UUID, limit, off
 	return payments, total, nil
 }
 
-func (r *PaymentRepositoryImpl) GetPaymentByBookingID(bookingID uuid.UUID) (*models.Payment, error) {
+func (r *PaymentRepositoryImpl) GetPaymentByBookingID(bookingID uint) (*models.Payment, error) {
 	var payment models.Payment
 	if err := r.db.Where("booking_id = ?", bookingID).First(&payment).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

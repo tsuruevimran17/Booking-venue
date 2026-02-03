@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 
 	"venue-service/internal/config"
 	"venue-service/internal/repository"
@@ -15,7 +16,7 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("Ошибка загрузки переменных окружения: ", err)
+		slog.Warn("ошибка загрузки переменных окружения", "error", err)
 	}
 
 	logger := config.InitLogger()
@@ -23,7 +24,7 @@ func main() {
 	db, err := config.ConnectDB()
 	if err != nil {
 		logger.Error("Ошибка подключения к БД", "layer", "config", "error", err)
-		log.Fatalf("ConnectDB: %v", err)
+		os.Exit(1)
 	}
 
 	venueRepo := repository.NewVenueRepository(db, logger)
@@ -36,6 +37,7 @@ func main() {
 	transport.RegisterRoutes(r, logger, venueService)
 
 	if err := r.Run(fmt.Sprintf(":%s", config.GetEnv("PORT", "8080"))); err != nil {
-		log.Fatalf("Ошибка запуска сервера: %v", err)
+		slog.Error("ошибка запуска сервера", "error", err)
+		os.Exit(1)
 	}
 }

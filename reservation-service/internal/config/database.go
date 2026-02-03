@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-
+	"log/slog"
 	"os"
 
 	"gorm.io/driver/postgres"
@@ -31,7 +31,7 @@ func SetUpDatabaseConnection() *gorm.DB {
 	}), &gorm.Config{})
 
 	if err != nil {
-
+		slog.Error("не удалось подключиться к базе данных", "error", err)
 		panic(err)
 	}
 

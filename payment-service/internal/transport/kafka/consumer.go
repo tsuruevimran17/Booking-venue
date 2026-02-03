@@ -1,17 +1,19 @@
-﻿package kafka
+package kafka
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
+	"math"
 	"strings"
 
 	kafkago "github.com/segmentio/kafka-go"
-	"github.com/google/uuid"
 
 	"payment-service/internal/config"
 	"payment-service/internal/dto"
 	"payment-service/internal/models"
+	"payment-service/internal/repository"
 	"payment-service/internal/services"
 )
 
@@ -26,14 +28,13 @@ type Consumer struct {
 }
 
 type BookingCreatedEvent struct {
-	BookingID uuid.UUID            `json:"booking_id"`
-	UserID    uuid.UUID            `json:"user_id"`
-	Amount    int64                `json:"amount"`
-	Method    models.PaymentMethod `json:"method"`
+	BookingID uint    `json:"booking_id"`
+	ClientID  uint    `json:"client_id"`
+	Price     float64 `json:"price_cents"`
 }
 
 type BookingCancelledEvent struct {
-	BookingID uuid.UUID `json:"booking_id"`
+	BookingID uint `json:"booking_id"`
 }
 
 func NewConsumerFromEnv(paymentService services.PaymentService, refundService services.RefundService, logger *slog.Logger) *Consumer {
@@ -93,26 +94,32 @@ func (c *Consumer) consumeBookingCreated(ctx context.Context) {
 			continue
 		}
 
-		if event.BookingID == uuid.Nil || event.UserID == uuid.Nil {
-			c.logger.Error("некорректные данные booking.created", "booking_id", event.BookingID, "user_id", event.UserID)
+		if event.BookingID == 0 || event.ClientID == 0 {
+			c.logger.Error("некорректные данные booking.created", "booking_id", event.BookingID, "client_id", event.ClientID)
 			continue
 		}
 
-		if event.Amount <= 0 {
-			c.logger.Error("некорректная сумма в booking.created", "amount", event.Amount)
+		amount := int64(math.Round(event.Price))
+		if amount <= 0 {
+			c.logger.Error("некорректная сумма в booking.created", "price_cents", event.Price)
 			continue
 		}
 
-		if event.Method == "" {
-			event.Method = models.MethodCard
+		existing, err := c.paymentService.GetPaymentByBookingID(event.BookingID)
+		if err == nil && existing != nil {
+			continue
+		}
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
+			c.logger.Error("ошибка проверки существующего платежа", "error", err, "booking_id", event.BookingID)
+			continue
 		}
 
 		req := dto.CreatePaymentRequest{
 			BookingID: event.BookingID,
-			UserID:    event.UserID,
-			Amount:    event.Amount,
+			UserID:    event.ClientID,
+			Amount:    amount,
 			Currency:  "RUB",
-			Method:    event.Method,
+			Method:    models.MethodCard,
 		}
 
 		if _, err := c.paymentService.CreatePendingPayment(&req); err != nil {
@@ -152,7 +159,7 @@ func (c *Consumer) consumeBookingCancelled(ctx context.Context) {
 			continue
 		}
 
-		if event.BookingID == uuid.Nil {
+		if event.BookingID == 0 {
 			c.logger.Error("некорректные данные booking.cancelled", "booking_id", event.BookingID)
 			continue
 		}

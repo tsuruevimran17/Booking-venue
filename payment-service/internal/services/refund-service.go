@@ -1,10 +1,11 @@
-﻿package services
+package services
 
 import (
 	"log/slog"
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"payment-service/internal/dto"
 	"payment-service/internal/models"
@@ -44,8 +45,8 @@ func (s *RefundServiceImpl) CreateRefund(paymentID uint, req *dto.RefundRequest)
 		paymentRepo := repository.NewPaymentRepository(tx)
 		refundRepo := repository.NewRefundRepository(tx)
 
-		payment, err := paymentRepo.GetPaymentByID(paymentID)
-		if err != nil {
+		var payment models.Payment
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&payment, paymentID).Error; err != nil {
 			s.logger.Error("ошибка получения платежа для возврата", "payment_id", paymentID, "error", err)
 			return err
 		}
