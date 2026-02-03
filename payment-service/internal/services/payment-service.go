@@ -1,10 +1,8 @@
-﻿package services
+package services
 
 import (
 	"log/slog"
 	"time"
-
-	"github.com/google/uuid"
 
 	"payment-service/internal/dto"
 	"payment-service/internal/models"
@@ -15,8 +13,8 @@ type PaymentService interface {
 	CreatePayment(req *dto.CreatePaymentRequest) (*models.Payment, error)
 	CreatePendingPayment(req *dto.CreatePaymentRequest) (*models.Payment, error)
 	GetPaymentByID(id uint) (*models.Payment, error)
-	GetPaymentByBookingID(bookingID uuid.UUID) (*models.Payment, error)
-	GetPaymentsByUserID(userID uuid.UUID, limit, offset int) ([]models.Payment, int64, error)
+	GetPaymentByBookingID(bookingID uint) (*models.Payment, error)
+	GetPaymentsByUserID(userID uint, limit, offset int) ([]models.Payment, int64, error)
 }
 
 type PaymentServiceImpl struct {
@@ -48,7 +46,7 @@ func (s *PaymentServiceImpl) GetPaymentByID(id uint) (*models.Payment, error) {
 	return payment, nil
 }
 
-func (s *PaymentServiceImpl) GetPaymentByBookingID(bookingID uuid.UUID) (*models.Payment, error) {
+func (s *PaymentServiceImpl) GetPaymentByBookingID(bookingID uint) (*models.Payment, error) {
 	payment, err := s.paymentRepo.GetPaymentByBookingID(bookingID)
 	if err != nil {
 		s.logger.Error("ошибка получения платежа по booking_id", "booking_id", bookingID, "error", err)
@@ -57,7 +55,7 @@ func (s *PaymentServiceImpl) GetPaymentByBookingID(bookingID uuid.UUID) (*models
 	return payment, nil
 }
 
-func (s *PaymentServiceImpl) GetPaymentsByUserID(userID uuid.UUID, limit, offset int) ([]models.Payment, int64, error) {
+func (s *PaymentServiceImpl) GetPaymentsByUserID(userID uint, limit, offset int) ([]models.Payment, int64, error) {
 	payments, total, err := s.paymentRepo.GetPaymentsByUserID(userID, limit, offset)
 	if err != nil {
 		s.logger.Error("ошибка получения платежей пользователя", "user_id", userID, "error", err)

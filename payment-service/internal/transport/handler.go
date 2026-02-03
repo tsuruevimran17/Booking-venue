@@ -1,13 +1,12 @@
-﻿package transport
+package transport
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"log/slog"
 
 	"payment-service/internal/dto"
 	"payment-service/internal/models"
@@ -33,7 +32,7 @@ func NewPaymentHandler(paymentService services.PaymentService, refundService ser
 }
 
 func (h *PaymentHandler) RegisterRoutes(rg *gin.RouterGroup) {
-		payments := rg.Group("/payments")
+	payments := rg.Group("/payments")
 	{
 		payments.POST("", h.CreatePayment)
 		payments.GET("", h.GetPaymentsHistory)
@@ -41,7 +40,7 @@ func (h *PaymentHandler) RegisterRoutes(rg *gin.RouterGroup) {
 		payments.POST("/:id/refund", h.CreateRefund)
 	}
 
-		bookings := rg.Group("/bookings")
+	bookings := rg.Group("/bookings")
 	{
 		bookings.GET("/:id/payment", h.GetPaymentByBookingID)
 	}
@@ -99,9 +98,9 @@ func (h *PaymentHandler) GetPaymentsHistory(c *gin.Context) {
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr)
+	userID, err := parseUintID(userIDStr)
 	if err != nil {
-		writeError(c, http.StatusBadRequest, "НЕКОРРЕКТНЫЙ_UUID", "400", "некорректный user_id")
+		writeError(c, http.StatusBadRequest, "НЕКОРРЕКТНЫЙ_ID", "400", "некорректный user_id")
 		return
 	}
 
@@ -157,9 +156,9 @@ func (h *PaymentHandler) CreateRefund(c *gin.Context) {
 }
 
 func (h *PaymentHandler) GetPaymentByBookingID(c *gin.Context) {
-	bookingID, err := uuid.Parse(c.Param("id"))
+	bookingID, err := parseUintID(c.Param("id"))
 	if err != nil {
-		writeError(c, http.StatusBadRequest, "НЕКОРРЕКТНЫЙ_UUID", "400", "некорректный id брони")
+		writeError(c, http.StatusBadRequest, "НЕКОРРЕКТНЫЙ_ID", "400", "некорректный id брони")
 		return
 	}
 

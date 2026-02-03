@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -32,8 +31,8 @@ func IsValidPaymentMethod(method PaymentMethod) bool {
 
 type Payment struct {
 	gorm.Model
-	BookingID      uuid.UUID     `gorm:"type:uuid;index" json:"booking_id"`
-	UserID         uuid.UUID     `gorm:"type:uuid;index" json:"user_id"`
+	BookingID      uint          `gorm:"index" json:"booking_id"`
+	UserID         uint          `gorm:"index" json:"user_id"`
 	Amount         int64         `gorm:"column:amount" json:"amount"`
 	Currency       string        `gorm:"column:currency" json:"currency"`
 	Method         PaymentMethod `gorm:"column:method" json:"method"`

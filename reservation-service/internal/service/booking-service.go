@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"reservation/internal/dto"
 	"reservation/internal/errors"
 	"reservation/internal/kafka"
@@ -110,7 +110,6 @@ func (r *bookingService) CreateReservation(reservation *dto.ReservationCreate, c
 		return nil, errors.ErrStartAtInPast
 	}
 
-
 	if reservation.Status == "" {
 		return nil, errors.ErrStatusEmpty
 	}
@@ -145,7 +144,12 @@ func (r *bookingService) CreateReservation(reservation *dto.ReservationCreate, c
 		return nil, errors.ErrDuration
 	}
 
-	if err := r.repo.Create(newReservation); err != nil {
+	if err := r.db.Transaction(func(tx *gorm.DB) error {
+		if err := r.checkBookingConflictsTx(tx, reservation.VenueID, reservation.StartAt, reservation.EndAt, nil); err != nil {
+			return err
+		}
+		return tx.Create(newReservation).Error
+	}); err != nil {
 		return nil, err
 	}
 
@@ -163,7 +167,7 @@ func (r *bookingService) CreateReservation(reservation *dto.ReservationCreate, c
 	}
 
 	if err := r.producer.PublishBookingCreated(context.Background(), evt); err != nil {
-		log.Printf("Ошибка отправки события в Kafka: %v", err)
+		slog.Error("ошибка отправки события в Kafka", "error", err)
 		return nil, fmt.Errorf("бронь создана (id=%d), но не удалось отправить событие в Kafka: %w", newReservation.ID, err)
 	}
 
@@ -196,7 +200,7 @@ func (r *bookingService) ReservationCancel(id uint, reason string) (*models.Rese
 	}
 
 	if err := r.producer.PublishBookingCancelled(context.Background(), evt); err != nil {
-		log.Printf("Ошибка отправки события отмены в Kafka: %v", err)
+		slog.Error("ошибка отправки события отмены в Kafka", "error", err)
 	}
 
 	return reservation, nil
@@ -348,7 +352,7 @@ func (r *bookingService) ValidateReservation(reservation *dto.ReservationCreate)
 		return err
 	}
 
-	if err := r.checkBookingConflicts(reservation.VenueID, reservation.StartAt, reservation.EndAt, nil); err != nil {
+	if err := r.checkBookingConflictsTx(r.db, reservation.VenueID, reservation.StartAt, reservation.EndAt, nil); err != nil {
 		return err
 	}
 
@@ -400,9 +404,9 @@ func (r *bookingService) checkScheduleMatch(day dto.DayScheduleDTO, startAt, end
 
 // checkBookingConflicts проверяет наличие конфликтующих броней в БД.
 // Если excludeID != nil, то брони с этим id будут исключены (полезно для обновления).
-func (r *bookingService) checkBookingConflicts(venueID uint, startAt, endAt time.Time, excludeID *uint) error {
+func (r *bookingService) checkBookingConflictsTx(db *gorm.DB, venueID uint, startAt, endAt time.Time, excludeID *uint) error {
 	var count int64
-	q := r.db.Model(&models.Reservation{})
+	q := db.Model(&models.Reservation{})
 	if excludeID != nil {
 		q = q.Where("venue_id = ? AND id <> ? AND ((start_at < ? AND end_at > ?) OR (start_at < ? AND end_at > ?) OR (start_at >= ? AND end_at <= ?))",
 			venueID, *excludeID, endAt, endAt, startAt, startAt, startAt, endAt)
@@ -477,7 +481,7 @@ func (r *bookingService) ValidateReservationUpdate(id uint, reservation *dto.Res
 		return err
 	}
 
-	if err := r.checkBookingConflicts(venueID, finalStartAt, finalEndAt, &id); err != nil {
+	if err := r.checkBookingConflictsTx(r.db, venueID, finalStartAt, finalEndAt, &id); err != nil {
 		return err
 	}
 

@@ -1,8 +1,9 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"os"
+
 	"reservation/internal/config"
 	"reservation/internal/kafka"
 	"reservation/internal/models"
@@ -15,40 +16,47 @@ import (
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	// Загружаем .env только для локальной разработки
 	// В Docker все переменные передаются через docker-compose.yaml
 	if err := godotenv.Load(); err != nil {
-		log.Println(".env file not found, using system environment variables")
+		slog.Info(".env file not found, using system environment variables")
 	}
 
 	db := config.SetUpDatabaseConnection()
 
 	if err := db.AutoMigrate(&models.ReservationDetails{}); err != nil {
-		log.Fatal("Ошибка миграции базы данных:", err)
+		slog.Error("ошибка миграции базы данных", "error", err)
+		os.Exit(1)
 	}
 
 	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
 	if kafkaBrokers == "" {
-		log.Fatal("KAFKA_BROKERS не задан в переменных окружения")
+		slog.Error("KAFKA_BROKERS не задан в переменных окружения")
+		os.Exit(1)
 	}
 
 	producer := kafka.NewProducer([]string{kafkaBrokers})
 	defer func() {
 		if err := producer.Close(); err != nil {
-			log.Printf("Ошибка закрытия Kafka продюсера: %v", err)
+			slog.Error("ошибка закрытия Kafka продюсера", "error", err)
 		}
 	}()
 
 	bookingRepo := repository.NewBookingRepo(db)
 	venueServiceURL := os.Getenv("VENUE_SERVICE_URL")
 	if venueServiceURL == "" {
-		log.Fatal("VENUE_SERVICE_URL не задан в переменных окружения")
+		slog.Error("VENUE_SERVICE_URL не задан в переменных окружения")
+		os.Exit(1)
 	}
 	bookingServ := service.NewBookingServ(bookingRepo, producer, venueServiceURL, db)
 
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		log.Fatal("JWT_SECRET не задан в переменных окружения")
+		slog.Error("JWT_SECRET не задан в переменных окружения")
+		os.Exit(1)
 	}
 
 	r := gin.Default()
@@ -59,6 +67,9 @@ func main() {
 	if port == "" {
 		port = "8081"
 	}
-	log.Printf("Сервер запущен на порту %s", port)
-	r.Run(":" + port)
+	slog.Info("сервер запущен", "port", port)
+	if err := r.Run(":" + port); err != nil {
+		slog.Error("не удалось запустить сервер", "error", err)
+		os.Exit(1)
+	}
 }

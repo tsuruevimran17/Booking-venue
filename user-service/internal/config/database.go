@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"user-service/internal/models"
 
@@ -22,7 +22,8 @@ func ConnectDatabase() *gorm.DB {
 	}
 
 	if dbHost == "" || dbUser == "" || dbName == "" || dbPort == "" {
-		log.Fatal("One or more required environment variables are missing: DB_HOST, DB_USER, DB_NAME, DB_PORT")
+		slog.Error("one or more required environment variables are missing: DB_HOST, DB_USER, DB_NAME, DB_PORT")
+		os.Exit(1)
 	}
 
 	dsn := fmt.Sprintf(
@@ -37,13 +38,15 @@ func ConnectDatabase() *gorm.DB {
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal("failed to connect database: ", err)
+		slog.Error("failed to connect database", "error", err)
+		os.Exit(1)
 	}
 
 	// Автоматическая миграция моделей
 	err = db.AutoMigrate(&models.User{})
 	if err != nil {
-		log.Fatal("failed to auto-migrate models: ", err)
+		slog.Error("failed to auto-migrate models", "error", err)
+		os.Exit(1)
 	}
 
 	return db

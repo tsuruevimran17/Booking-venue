@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"log/slog"
 	"os"
 )
 
@@ -14,7 +14,7 @@ func EnsureLogDir() string {
 	}
 
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		log.Printf("failed to create log dir %s: %v", dir, err)
+		slog.Error("failed to create log dir", "dir", dir, "error", err)
 	}
 	return dir
 }
